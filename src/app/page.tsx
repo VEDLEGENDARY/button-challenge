@@ -33,16 +33,12 @@ const Page = () => {
     setClickCount(newCount);
 
     // Update click count in Supabase
-    const { error } = await supabase
+    await supabase
       .from('clicks')
       .upsert(
         { id: 1, count: newCount }, 
         { onConflict: 'id' } // Ensure 'id' is specified as a string
       );
-
-    if (error) {
-      console.error("Error updating click count:", error);
-    }
   };
 
   return (
