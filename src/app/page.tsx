@@ -15,7 +15,7 @@ const Page = () => {
   // Fetch initial click count from Supabase
   useEffect(() => {
     const fetchClickCount = async () => {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('clicks')
         .select('count')
         .single();
@@ -33,12 +33,17 @@ const Page = () => {
     setClickCount(newCount);
 
     // Update click count in Supabase
-    await supabase
+    const { error } = await supabase
       .from('clicks')
       .upsert(
         { id: 1, count: newCount }, 
         { onConflict: 'id' } // Ensure 'id' is specified as a string
       );
+
+    // You can log the error or just do nothing if there's no error
+    if (error) {
+      console.error("Error updating click count:", error);
+    }
   };
 
   return (
