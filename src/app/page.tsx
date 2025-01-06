@@ -30,6 +30,12 @@ const Page = () => {
     };
 
     fetchClickCount();
+
+    // Auto-update the click count every second
+    const intervalId = setInterval(fetchClickCount, 1000);
+
+    // Clear the interval when the component unmounts
+    return () => clearInterval(intervalId);
   }, []);
 
   // Handle button click
