@@ -3,7 +3,11 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
 
-// Initialize Supabase client with provided URL and key
+// Define the type for the data returned from the query
+type ClickData = {
+  count: number;
+};
+
 const supabase = createClient(
   'https://fdcegkbfklelrthizulq.supabase.co', 
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZkY2Vna2Jma2xlbHJ0aGl6dWxxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzYxMTY2MjcsImV4cCI6MjA1MTY5MjYyN30.G-WipPqT8qZla6T6tMW7t49ofqx1Wn3dxhMMY_Z3wGA'
@@ -15,10 +19,15 @@ const Page = () => {
   // Fetch initial click count from Supabase
   useEffect(() => {
     const fetchClickCount = async () => {
-      const { data } = await supabase
-        .from('clicks')
+      const { data, error } = await supabase
+        .from('clicks') // Only provide the table name here
         .select('count')
         .single();
+
+      if (error) {
+        console.error("Error fetching click count:", error);
+      }
+
       if (data) {
         setClickCount(data.count);
       }
@@ -27,7 +36,7 @@ const Page = () => {
     fetchClickCount();
   }, []);
 
-  // Handle click button click
+  // Handle button click
   const handleClick = async () => {
     let retryCount = 0;
     let success = false;
@@ -35,9 +44,9 @@ const Page = () => {
     // Retry mechanism to handle concurrency issues
     while (!success && retryCount < 5) {
       try {
-        // Fetch the current count value from the database
+        // Fetch the current click count
         const { data, error: fetchError } = await supabase
-          .from('clicks')
+          .from('clicks') // Only provide the table name here
           .select('count')
           .single();
         
@@ -47,7 +56,7 @@ const Page = () => {
           const currentCount = data.count;
           const newCount = currentCount + 1;
 
-          // Attempt to update the count in the database
+          // Update the click count in the database
           const { error: updateError } = await supabase
             .from('clicks')
             .upsert(
@@ -57,7 +66,7 @@ const Page = () => {
 
           if (updateError) throw new Error(updateError.message);
 
-          // If the update is successful, set the new count in the client state
+          // Update the state with the new click count
           setClickCount(newCount);
           success = true;
         }
@@ -67,7 +76,7 @@ const Page = () => {
       }
     }
 
-    // If the retry limit is exceeded
+    // If retry limit is exceeded
     if (!success) {
       console.error("Failed to update click count after multiple attempts.");
     }
