@@ -3,27 +3,22 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
 
-// Initialize Supabase client with provided URL and key
+// Initialize Supabase client
 const supabase = createClient(
-  'https://fdcegkbfklelrthizulq.supabase.co', 
+  'https://fdcegkbfklelrthizulq.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZkY2Vna2Jma2xlbHJ0aGl6dWxxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzYxMTY2MjcsImV4cCI6MjA1MTY5MjYyN30.G-WipPqT8qZla6T6tMW7t49ofqx1Wn3dxhMMY_Z3wGA'
 );
 
 const Page = () => {
   const [clickCount, setClickCount] = useState<number>(0);
 
-  // Fetch initial click count from Supabase
+  // Fetch initial click count and set up live updates
   useEffect(() => {
     const fetchClickCount = async () => {
       const { data, error } = await supabase
-        .from('clicks') // Only provide the table name here
+        .from('clicks')
         .select('count')
         .single();
-
-      if (error) {
-        console.error("Error fetching click count:", error);
-      }
-
       if (data) {
         setClickCount(data.count);
       }
@@ -31,72 +26,64 @@ const Page = () => {
 
     fetchClickCount();
 
-    // Auto-update the click count every second
-    const intervalId = setInterval(fetchClickCount, 1000);
-
-    // Clear the interval when the component unmounts
-    return () => clearInterval(intervalId);
+    // Auto-update click count every second
+    const interval = setInterval(fetchClickCount, 1000);
+    return () => clearInterval(interval); // Clean up the interval on component unmount
   }, []);
 
-  // Handle button click
+  // Handle click
   const handleClick = async () => {
-    let retryCount = 0;
-    let success = false;
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('clicks')
+        .select('count')
+        .single();
+      if (fetchError) throw new Error(fetchError.message);
 
-    // Retry mechanism to handle concurrency issues
-    while (!success && retryCount < 5) {
-      try {
-        // Fetch the current click count
-        const { data, error: fetchError } = await supabase
-          .from('clicks') // Only provide the table name here
-          .select('count')
-          .single();
-        
-        if (fetchError) throw new Error(fetchError.message);
+      if (data) {
+        const currentCount = data.count;
+        const newCount = currentCount + 1;
 
-        if (data) {
-          const currentCount = data.count;
-          const newCount = currentCount + 1;
+        const { error: updateError } = await supabase
+          .from('clicks')
+          .upsert({ id: 1, count: newCount }, { onConflict: 'id' });
+        if (updateError) throw new Error(updateError.message);
 
-          // Update the click count in the database
-          const { error: updateError } = await supabase
-            .from('clicks')
-            .upsert(
-              { id: 1, count: newCount },
-              { onConflict: 'id' }
-            );
-
-          if (updateError) throw new Error(updateError.message);
-
-          // Update the state with the new click count
-          setClickCount(newCount);
-          success = true;
-        }
-      } catch (error) {
-        console.error("Error updating click count:", error);
-        retryCount++;
+        setClickCount(newCount);
       }
-    }
-
-    // If retry limit is exceeded
-    if (!success) {
-      console.error("Failed to update click count after multiple attempts.");
+    } catch (error) {
+      console.error("Error updating click count:", error);
     }
   };
 
   return (
     <div className="py-28 flex flex-col items-center min-h-screen bg-slate-800">
       <div className="flex flex-col justify-start items-center">
-        <div className="w-1/3">
-        </div>
-        <p className="text-6xl tracking-normal font-medium bg-gradient-to-r from-indigo-500 to-pink-500 rounded-lg p-10 pt-7 pb-7 m-10">
-          <button onClick={handleClick} className="text-white text-xl font-semibold">
-            Click Me
-          </button>
-        </p>
-        <p className="text-3xl text-white">Current Click Count: {clickCount}</p>
+        <p className="text-3xl text-white mb-6">Current Click Count: {clickCount}</p>
+        <Button
+          onClick={handleClick}
+          className="text-6xl tracking-normal font-medium bg-gradient-to-r from-indigo-500 to-pink-500 rounded-lg p-10 pt-7 pb-7 m-10 text-white hover:opacity-90">
+          Click Me
+        </Button>
       </div>
     </div>
+  );
+};
+
+// Custom Button component (Optional)
+const Button = ({
+  children,
+  onClick,
+  className,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  className: string;
+}) => {
+  return (
+    <button onClick={onClick} className={className}>
+      {children}
+    </button>
   );
 };
 
