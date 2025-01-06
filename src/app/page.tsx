@@ -23,26 +23,53 @@ const Page = () => {
         setClickCount(data.count);
       }
     };
-    
+
     fetchClickCount();
   }, []);
 
   // Handle click button click
   const handleClick = async () => {
-    const newCount = clickCount + 1;
-    setClickCount(newCount);
+    let retryCount = 0;
+    let success = false;
 
-    // Update click count in Supabase
-    const { error } = await supabase
-      .from('clicks')
-      .upsert(
-        { id: 1, count: newCount }, 
-        { onConflict: 'id' } // Ensure 'id' is specified as a string
-      );
+    // Retry mechanism to handle concurrency issues
+    while (!success && retryCount < 5) {
+      try {
+        // Fetch the current count value from the database
+        const { data, error: fetchError } = await supabase
+          .from('clicks')
+          .select('count')
+          .single();
+        
+        if (fetchError) throw new Error(fetchError.message);
 
-    // You can log the error or just do nothing if there's no error
-    if (error) {
-      console.error("Error updating click count:", error);
+        if (data) {
+          const currentCount = data.count;
+          const newCount = currentCount + 1;
+
+          // Attempt to update the count in the database
+          const { error: updateError } = await supabase
+            .from('clicks')
+            .upsert(
+              { id: 1, count: newCount },
+              { onConflict: 'id' }
+            );
+
+          if (updateError) throw new Error(updateError.message);
+
+          // If the update is successful, set the new count in the client state
+          setClickCount(newCount);
+          success = true;
+        }
+      } catch (error) {
+        console.error("Error updating click count:", error);
+        retryCount++;
+      }
+    }
+
+    // If the retry limit is exceeded
+    if (!success) {
+      console.error("Failed to update click count after multiple attempts.");
     }
   };
 
