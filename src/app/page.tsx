@@ -60,10 +60,8 @@ const Page = () => {
         <button 
           onContextMenu={(e) => e.preventDefault()} 
           onClick={handleClick}
-          className="text-white text-6xl font-semibold select-none tracking-normal bg-gradient-to-r from-indigo-500 to-pink-500 rounded-lg p-10 pt-7 pb-7 m-10"
-          style={{ userSelect: "none", WebkitUserSelect: "none", msUserSelect: "none" }}
-          draggable={false}>
-          Click Me
+          className="text-white text-6xl font-semibold select-none tracking-normal bg-gradient-to-r from-indigo-500 to-pink-500 rounded-lg p-10 pt-7 pb-7 m-10">
+            Click Me
         </button>
         <p className="text-3xl text-white">Current Click Count: {clickCount}</p>
       </div>
