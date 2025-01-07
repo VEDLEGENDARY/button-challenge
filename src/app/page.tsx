@@ -57,11 +57,12 @@ const Page = () => {
       <div className="flex flex-col justify-start items-center">
         <div className="w-1/3">
         </div>
-        <p className="text-6xl tracking-normal font-medium bg-gradient-to-r from-indigo-500 to-pink-500 rounded-lg p-10 pt-7 pb-7 m-10">
-          <button onClick={handleClick} className="text-white text-xl font-semibold">
+        <button 
+          onContextMenu={(e) => e.preventDefault()} 
+          onClick={handleClick}
+          className="text-white text-6xl font-semibold select-none tracking-normal bg-gradient-to-r from-indigo-500 to-pink-500 rounded-lg p-10 pt-7 pb-7 m-10">
             Click Me
-          </button>
-        </p>
+        </button>
         <p className="text-3xl text-white">Current Click Count: {clickCount}</p>
       </div>
     </div>
