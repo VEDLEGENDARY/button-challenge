@@ -13,7 +13,7 @@ const Page = () => {
 
   useEffect(() => {
     const fetchClickCount = async () => {
-      const { data, error } = await supabase.from('clicks').select('count').single();
+      const { data } = await supabase.from('clicks').select('count').single();
       if (data) {
         setClickCount(data.count);
       }
@@ -21,22 +21,16 @@ const Page = () => {
 
     fetchClickCount();
 
-    const interval = setInterval(fetchClickCount, 1); // Auto-update count every second
+    const interval = setInterval(fetchClickCount, 1000); // Auto-update count every second
     return () => clearInterval(interval);
   }, []);
 
   const handleIncrement = async () => {
-    const { error } = await supabase.rpc('increment_click_count');
-    if (error) {
-      console.error('Error incrementing click count:', error);
-    }
+    await supabase.rpc('increment_click_count'); // No need to assign `error` if not used
   };
 
   const handleDecrement = async () => {
-    const { error } = await supabase.rpc('decrement_click_count');
-    if (error) {
-      console.error('Error decrementing click count:', error);
-    }
+    await supabase.rpc('decrement_click_count'); // No need to assign `error` if not used
   };
 
   return (
