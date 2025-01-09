@@ -26,39 +26,89 @@ const Page = () => {
   }, []);
 
   const handleIncrement = async () => {
-    await supabase.rpc('increment_click_count'); // No need to assign `error` if not used
+    await supabase.rpc('increment_click_count');
   };
 
   const handleDecrement = async () => {
-    await supabase.rpc('decrement_click_count'); // No need to assign `error` if not used
+    await supabase.rpc('decrement_click_count');
   };
 
   return (
-    <div className="py-28 flex flex-col items-center min-h-screen bg-slate-800">
-      <div className="flex flex-col justify-start items-center">
-        <p className="text-3xl text-white">World Click Count</p>
+    <div className="flex min-h-screen flex-col items-center justify-start bg-slate-800 py-28">
+      <p className="text-3xl text-white">World Click Count</p>
 
-        <div className="flex flex-row">
-          <p className="text-7xl text-white pt-5 pb-10">
-            {clickCount.toLocaleString()} {/* Format count with commas */}
-          </p>
-          <p className="text-7xl text-white pt-5 pb-10">&nbsp;/&nbsp;1,000,000</p>
-        </div>
+      <div className="sm:flex-col md:flex-row">
+        <p className="pb-5 pt-5 text-center text-7xl text-white">{clickCount.toLocaleString()}</p>
+        <p className="pb-5 text-center text-4xl text-white">OUT OF</p>
+        <p className="pb-10 text-center text-5xl text-white">1,000,000</p>
+      </div>
 
-        <div className="flex md:flex-row sm:flex-col justify-start items-center">
+      <div className="flex items-center justify-start sm:flex-col md:flex-row">
+        <button
+          onClick={handleIncrement}
+          className="m-10 mb-0 w-full select-none rounded-lg bg-gradient-to-r from-indigo-500 to-pink-500 p-20 pb-7 pt-7 text-5xl font-semibold tracking-normal text-white sm:w-3/4"
+        >
+          ADD
+        </button>
+        <button
+          onClick={handleDecrement}
+          className="m-10 mb-0 w-full select-none rounded-lg bg-gradient-to-r from-indigo-500 to-pink-500 p-10 pb-7 pt-7 text-5xl font-semibold tracking-normal text-white sm:w-3/4"
+        >
+          REMOVE
+        </button>
+      </div>
+
+      <div className="flex flex-col items-center pt-16 text-center">
+        <p className="text-3xl text-white">IP Based Username</p>
+        <p className="text-sm text-white">
+          We never sell your data or share any IP address with anyone.<br />
+          The purpose of storing your IP addresses is solely for your "Username".
+        </p>
+        <div className="flex flex-col items-center p-3">
+          <input
+            type="text"
+            className="m-5 w-full rounded-lg bg-slate-700 p-2 pl-3 pr-2 font-sans text-white"
+            placeholder="Username (Max 10 characters)"
+            disabled
+          />
           <button
-            onClick={handleIncrement}
-            className="text-white text-6xl font-semibold select-none tracking-normal bg-gradient-to-r from-indigo-500 to-pink-500 rounded-lg p-20 pt-7 pb-7 m-10"
+            className="w-full rounded-lg bg-blue-700 px-5 py-2.5 text-base font-normal text-white hover:bg-blue-800 sm:w-auto"
+            disabled
           >
-            ADD
-          </button>
-          <button
-            onClick={handleDecrement}
-            className="text-white text-6xl font-semibold select-none tracking-normal bg-gradient-to-r from-indigo-500 to-pink-500 rounded-lg p-10 pt-7 pb-7 m-10"
-          >
-            REMOVE
+            Submit
           </button>
         </div>
+      </div>
+
+      <p className="flex flex-col items-center pb-3 pt-14 text-center text-3xl text-white">Leaderboard</p>
+
+      <div className="relative overflow-x-auto">
+        <table className="w-full text-left text-sm text-gray-500 rtl:text-right dark:text-gray-400">
+          <thead className="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
+            <tr>
+              <th scope="col" className="px-6 py-3">Username</th>
+              <th scope="col" className="px-6 py-3">Clicks</th>
+              <th scope="col" className="px-6 py-3">Rank</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr className="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
+              <th scope="row" className="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white">User1</th>
+              <td className="px-6 py-4">500,000</td>
+              <td className="px-6 py-4">1</td>
+            </tr>
+            <tr className="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
+              <th scope="row" className="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white">User2</th>
+              <td className="px-6 py-4">450,000</td>
+              <td className="px-6 py-4">2</td>
+            </tr>
+            <tr className="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
+              <th scope="row" className="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white">User3</th>
+              <td className="px-6 py-4">400,000</td>
+              <td className="px-6 py-4">3</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
   );
