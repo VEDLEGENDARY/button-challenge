@@ -483,6 +483,12 @@ video {
 .mb-0 {
   margin-bottom: 0px;
 }
+.ml-6 {
+  margin-left: 1.5rem;
+}
+.mr-6 {
+  margin-right: 1.5rem;
+}
 .flex {
   display: flex;
 }

@@ -60,7 +60,7 @@ const Page = () => {
         </button>
       </div>
 
-      <div className="flex flex-col items-center pt-16 text-center">
+      <div className="flex flex-col items-center pt-16 ml-6 mr-6 text-center">
         <p className="text-3xl text-white">IP Based Username</p>
         <p className="text-sm text-white">
           We never sell your data or share any IP address with anyone.<br />
