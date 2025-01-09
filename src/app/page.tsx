@@ -38,7 +38,7 @@ const Page = () => {
       <p className="text-3xl text-white">World Click Count</p>
 
       <div className="sm:flex-col md:flex-row">
-        <p className="pb-5 pt-5 text-center text-7xl text-white">
+        <p className="pb-5 pt-5 text-center text-7xl sm:text-5xl text-white">
           {clickCount.toLocaleString()}
         </p>
         <p className="pb-5 text-center text-4xl text-white">OUT OF</p>
