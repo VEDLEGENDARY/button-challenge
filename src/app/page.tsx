@@ -38,7 +38,9 @@ const Page = () => {
       <p className="text-3xl text-white">World Click Count</p>
 
       <div className="sm:flex-col md:flex-row">
-        <p className="pb-5 pt-5 text-center text-7xl text-white">{clickCount.toLocaleString()}</p>
+        <p className="pb-5 pt-5 text-center text-7xl text-white">
+          {clickCount.toLocaleString()}
+        </p>
         <p className="pb-5 text-center text-4xl text-white">OUT OF</p>
         <p className="pb-10 text-center text-5xl text-white">1,000,000</p>
       </div>
@@ -62,7 +64,7 @@ const Page = () => {
         <p className="text-3xl text-white">IP Based Username</p>
         <p className="text-sm text-white">
           We never sell your data or share any IP address with anyone.<br />
-          The purpose of storing your IP addresses is solely for your "Username".
+          The purpose of storing your IP addresses is solely for your &quot;Username&quot;.
         </p>
         <div className="flex flex-col items-center p-3">
           <input
@@ -80,7 +82,9 @@ const Page = () => {
         </div>
       </div>
 
-      <p className="flex flex-col items-center pb-3 pt-14 text-center text-3xl text-white">Leaderboard</p>
+      <p className="flex flex-col items-center pb-3 pt-14 text-center text-3xl text-white">
+        Leaderboard
+      </p>
 
       <div className="relative overflow-x-auto">
         <table className="w-full text-left text-sm text-gray-500 rtl:text-right dark:text-gray-400">
@@ -93,17 +97,32 @@ const Page = () => {
           </thead>
           <tbody>
             <tr className="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
-              <th scope="row" className="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white">User1</th>
+              <th
+                scope="row"
+                className="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
+              >
+                User1
+              </th>
               <td className="px-6 py-4">500,000</td>
               <td className="px-6 py-4">1</td>
             </tr>
             <tr className="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
-              <th scope="row" className="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white">User2</th>
+              <th
+                scope="row"
+                className="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
+              >
+                User2
+              </th>
               <td className="px-6 py-4">450,000</td>
               <td className="px-6 py-4">2</td>
             </tr>
             <tr className="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
-              <th scope="row" className="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white">User3</th>
+              <th
+                scope="row"
+                className="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
+              >
+                User3
+              </th>
               <td className="px-6 py-4">400,000</td>
               <td className="px-6 py-4">3</td>
             </tr>
