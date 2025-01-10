@@ -14,8 +14,8 @@ const Page = () => {
   const [userIP, setUserIP] = useState<string | null>(null);
   const [adds, setAdds] = useState<number>(0);
   const [removes, setRemoves] = useState<number>(0);
+  const [leaderboard, setLeaderboard] = useState<any[]>([]);
 
-  // Function to fetch click count
   useEffect(() => {
     const fetchClickCount = async () => {
       const { data } = await supabase.from('clicks').select('count').single();
@@ -26,78 +26,100 @@ const Page = () => {
 
     fetchClickCount();
 
-    const interval = setInterval(fetchClickCount, 1000); // Auto-update count every second
+    const interval = setInterval(fetchClickCount, 100);
     return () => clearInterval(interval);
   }, []);
 
-  // Save or update user's IP and username in the Supabase table
-  const saveUserIPAndUsername = async () => {
-    if (!username) return;
+  const fetchLeaderboard = async () => {
+    const { data, error } = await supabase
+      .from('userbase')
+      .select('username, adds, removes')
+      .order('adds', { ascending: false })
+      .limit(10);
 
-    try {
-      const res = await fetch('https://api.ipify.org?format=json');
-      const data = await res.json();
-      const ip = data.ip;
-      setUserIP(ip);
+    if (error) {
+      console.error('Error fetching leaderboard:', error.message);
+    } else {
+      const leaderboardData = data.map((entry: any) => ({
+        username: entry.username,
+        adds: entry.adds,
+        removes: entry.removes,
+        totalClicks: entry.adds + entry.removes,
+      }));
 
-      const { data: existingUser, error: fetchError } = await supabase
-        .from('userbase')
-        .select('*')
-        .eq('ip', ip)
-        .single();
-
-      if (fetchError && fetchError.code !== 'PGRST116') {
-        console.error('Error fetching IP:', fetchError.message);
-      }
-
-      if (existingUser) {
-        // Update existing user data
-        const { data: updatedUser, error: updateError } = await supabase
-          .from('userbase')
-          .update({ username, adds, removes })
-          .eq('ip', ip);
-
-        if (updateError) {
-          console.error('Error updating user:', updateError.message);
-        } else {
-          console.log('User updated:', updatedUser);
-        }
-      } else {
-        // Insert new user data
-        const { data: newUser, error: insertError } = await supabase
-          .from('userbase')
-          .insert([{ ip, username, adds, removes }]);
-
-        if (insertError) {
-          console.error('Error inserting user:', insertError.message);
-        } else {
-          console.log('New user inserted:', newUser);
-        }
-      }
-    } catch (err) {
-      console.error('An error occurred while fetching IP:', err);
+      setLeaderboard(leaderboardData);
     }
   };
 
-  // Generate a random username (e.g., user4925482749264836)
-  const generateRandomUsername = () => {
-    return `user${Math.floor(Math.random() * 1e16)}`;
+  useEffect(() => {
+    fetchLeaderboard();
+    const interval = setInterval(fetchLeaderboard, 100);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleIncrement = async () => {
+    setAdds(adds + 1);
+    await supabase.rpc('increment_click_count');
+    
+    if (userIP) {
+      const { data: user, error: userError } = await supabase
+        .from('userbase')
+        .select('adds')
+        .eq('ip', userIP)
+        .single();
+
+      if (userError) {
+        console.error('Error fetching user:', userError.message);
+      } else {
+        const { error: updateError } = await supabase
+          .from('userbase')
+          .update({ adds: user.adds + 1 })
+          .eq('ip', userIP);
+
+        if (updateError) {
+          console.error('Error updating adds count:', updateError.message);
+        }
+      }
+    }
   };
 
-  // Check for existing user and username, or generate new username
-  useEffect(() => {
-    const checkUserIP = async () => {
+  const handleDecrement = async () => {
+    setRemoves(removes + 1);
+    await supabase.rpc('decrement_click_count');
+    
+    if (userIP) {
+      const { data: user, error: userError } = await supabase
+        .from('userbase')
+        .select('removes')
+        .eq('ip', userIP)
+        .single();
+
+      if (userError) {
+        console.error('Error fetching user:', userError.message);
+      } else {
+        const { error: updateError } = await supabase
+          .from('userbase')
+          .update({ removes: user.removes + 1 })
+          .eq('ip', userIP);
+
+        if (updateError) {
+          console.error('Error updating removes count:', updateError.message);
+        }
+      }
+    }
+  };
+
+  const saveUserIPAndUsername = async () => {
+    if (username) {
       try {
         const res = await fetch('https://api.ipify.org?format=json');
         const data = await res.json();
         const ip = data.ip;
-
         setUserIP(ip);
 
-        // Check if the IP exists in the database
         const { data: existingUser, error: fetchError } = await supabase
           .from('userbase')
-          .select('username, adds, removes')
+          .select('*')
           .eq('ip', ip)
           .single();
 
@@ -106,58 +128,38 @@ const Page = () => {
         }
 
         if (existingUser) {
-          // If IP exists, use the existing username and counts
-          setUsername(existingUser.username);
-          setAdds(existingUser.adds);
-          setRemoves(existingUser.removes);
+          const { data: updatedUser, error: updateError } = await supabase
+            .from('userbase')
+            .update({ username, adds, removes })
+            .eq('ip', ip);
+
+          if (updateError) {
+            console.error('Error updating user:', updateError.message);
+          } else {
+            console.log('IP updated with new username:', updatedUser);
+          }
         } else {
-          // If IP doesn't exist, generate a random username
-          setUsername(generateRandomUsername());
+          const { data: newUser, error: insertError } = await supabase
+            .from('userbase')
+            .insert([{ ip, username, adds, removes }]);
+
+          if (insertError) {
+            console.error('Error inserting user:', insertError.message);
+          } else {
+            console.log('New user inserted with IP and username:', newUser);
+          }
         }
       } catch (err) {
-        console.error('Error fetching IP:', err);
+        console.error('An error occurred while fetching IP:', err);
       }
-    };
-
-    checkUserIP();
-  }, []);
-
-  // Update counts in the database and local state
-  const handleIncrement = async () => {
-    const newAdds = adds + 1;
-    setAdds(newAdds); // Update state
-
-    const ip = userIP;
-    if (ip) {
-      await supabase
-        .from('userbase')
-        .update({ adds: newAdds })
-        .eq('ip', ip); // Update adds count in the database
+    } else {
+      console.log("Username is required");
     }
   };
-
-  const handleDecrement = async () => {
-    const newRemoves = removes + 1;
-    setRemoves(newRemoves); // Update state
-
-    const ip = userIP;
-    if (ip) {
-      await supabase
-        .from('userbase')
-        .update({ removes: newRemoves })
-        .eq('ip', ip); // Update removes count in the database
-    }
-  };
-
-  useEffect(() => {
-    if (username) {
-      saveUserIPAndUsername(); // Save the user's data if username is available
-    }
-  }, [username, adds, removes]);
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-start bg-slate-800 py-28">
-      <p className="text-3xl text-white">World Click Count</p>
+      <p className="text-7xl text-white">World Click Count</p>
 
       <div className="sm:flex-col md:flex-row">
         <p className="pb-5 pt-5 text-center text-7xl text-white">
@@ -182,73 +184,49 @@ const Page = () => {
         </button>
       </div>
 
-      <div className="flex flex-col items-center pt-16 ml-6 mr-6 text-center">
-        <p className="text-3xl text-white">Username</p>
-        <p className="text-sm text-white">
-          Please enter a username (no IP addresses will be shown).<br />
-        </p>
-        <div className="flex flex-col items-center p-3">
-          <input
-            type="text"
-            className="m-5 w-full rounded-lg bg-slate-700 p-2 pl-3 pr-2 font-sans text-white"
-            placeholder="Username (Max 10 characters)"
-            value={username || ''}
-            onChange={(e) => setUsername(e.target.value)}
-          />
-          <button
-            className="w-full rounded-lg bg-blue-700 px-5 py-2.5 text-base font-normal text-white hover:bg-blue-800 sm:w-auto"
-            onClick={() => saveUserIPAndUsername()}
-            disabled={!username}
-          >
-            Submit
-          </button>
-        </div>
+      <div className="flex flex-col items-center p-3">
+        <input
+          type="text"
+          className="m-5 w-full rounded-lg bg-slate-700 p-2 pl-3 pr-2 font-sans text-white"
+          placeholder="Username (Max 10 characters)"
+          value={username || ''}
+          onChange={(e) => setUsername(e.target.value)}
+        />
+        <button
+          className="w-full rounded-lg bg-blue-700 px-5 py-2.5 text-base font-normal text-white hover:bg-blue-800 sm:w-auto"
+          onClick={saveUserIPAndUsername}
+          disabled={!username}
+        >
+          Submit
+        </button>
       </div>
 
-      <p className="flex flex-col items-center pb-3 pt-14 text-center text-3xl text-white">
-        Leaderboard
-      </p>
+      <div className="mt-6 text-white text-2xl">Leaderboard</div>
 
-      <div className="relative overflow-x-auto">
-        <table className="w-full text-left text-sm text-gray-500 rtl:text-right dark:text-gray-400">
-          <thead className="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
+      <div className="mt-6 rounded-lg bg-white shadow-md dark:bg-gray-800 dark:text-gray-400 w-3/4 md:w-1/2">
+        <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+          <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
             <tr>
-              <th scope="col" className="px-6 py-3">Username</th>
-              <th scope="col" className="px-6 py-3">Clicks</th>
-              <th scope="col" className="px-6 py-3">Rank</th>
+              <th className="px-6 py-3">Rank</th>
+              <th className="px-6 py-3">Username</th>
+              <th className="px-6 py-3">Adds</th>
+              <th className="px-6 py-3">Removes</th>
+              <th className="px-6 py-3">Total</th>
             </tr>
           </thead>
           <tbody>
-            <tr className="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
-              <th
-                scope="row"
-                className="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
+            {leaderboard.map((entry, index) => (
+              <tr
+                key={index}
+                className="bg-white border-b dark:bg-gray-800 dark:border-gray-700"
               >
-                User1
-              </th>
-              <td className="px-6 py-4">500,000</td>
-              <td className="px-6 py-4">1</td>
-            </tr>
-            <tr className="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
-              <th
-                scope="row"
-                className="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
-              >
-                User2
-              </th>
-              <td className="px-6 py-4">450,000</td>
-              <td className="px-6 py-4">2</td>
-            </tr>
-            <tr className="border-b bg-white dark:border-gray-700 dark:bg-gray-800">
-              <th
-                scope="row"
-                className="whitespace-nowrap px-6 py-4 font-medium text-gray-900 dark:text-white"
-              >
-                User3
-              </th>
-              <td className="px-6 py-4">400,000</td>
-              <td className="px-6 py-4">3</td>
-            </tr>
+                <td className="px-6 py-4">{index + 1}</td>
+                <td className="px-6 py-4">{entry.username}</td>
+                <td className="px-6 py-4">{entry.adds}</td>
+                <td className="px-6 py-4">{entry.removes}</td>
+                <td className="px-6 py-4">{entry.totalClicks}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
