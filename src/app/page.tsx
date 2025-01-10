@@ -11,7 +11,6 @@ const supabase = createClient(
 const Page = () => {
   const [clickCount, setClickCount] = useState<number>(0);
   const [username, setUsername] = useState<string | null>(null);
-  const [userIP, setUserIP] = useState<string | null>(null);
   const [adds, setAdds] = useState<number>(0);
   const [removes, setRemoves] = useState<number>(0);
 
@@ -41,53 +40,52 @@ const Page = () => {
 
   // Function to save or update user's IP address and username in the Supabase table
   const saveUserIPAndUsername = async () => {
-  if (!username) return;
+    if (!username) return;
 
-  try {
-    const res = await fetch('https://api.ipify.org?format=json');
-    const data = await res.json();
-    const ip = data.ip;
-    setUserIP(ip);
+    try {
+      const res = await fetch('https://api.ipify.org?format=json');
+      const data = await res.json();
+      const ip = data.ip;
 
-    // Check if the IP already exists in the 'userbase' table
-    const { data: existingUser, error: fetchError } = await supabase
-      .from('userbase')
-      .select('*')
-      .eq('ip', ip)
-      .single(); // Ensures only one row is returned
-
-    if (fetchError && fetchError.code !== 'PGRST116') {
-      console.error('Error fetching IP:', fetchError.message);
-    }
-
-    if (existingUser) {
-      // If the IP exists, update the username
-      const { data: updatedUser, error: updateError } = await supabase
+      // Check if the IP already exists in the 'userbase' table
+      const { data: existingUser, error: fetchError } = await supabase
         .from('userbase')
-        .update({ username, adds, removes })
-        .eq('ip', ip);
+        .select('*')
+        .eq('ip', ip)
+        .single(); // Ensures only one row is returned
 
-      if (updateError) {
-        console.error('Error updating user:', updateError.message);
-      } else {
-        console.log('IP updated with new username:', updatedUser);
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        console.error('Error fetching IP:', fetchError.message);
       }
-    } else {
-      // If the IP doesn't exist, insert a new row
-      const { data: newUser, error: insertError } = await supabase
-        .from('userbase')
-        .insert([{ ip, username, adds, removes }]);
 
-      if (insertError) {
-        console.error('Error inserting user:', insertError.message);
+      if (existingUser) {
+        // If the IP exists, update the username
+        const { data: updatedUser, error: updateError } = await supabase
+          .from('userbase')
+          .update({ username, adds, removes })
+          .eq('ip', ip);
+
+        if (updateError) {
+          console.error('Error updating user:', updateError.message);
+        } else {
+          console.log('IP updated with new username:', updatedUser);
+        }
       } else {
-        console.log('New user inserted with IP and username:', newUser);
+        // If the IP doesn't exist, insert a new row
+        const { data: newUser, error: insertError } = await supabase
+          .from('userbase')
+          .insert([{ ip, username, adds, removes }]);
+
+        if (insertError) {
+          console.error('Error inserting user:', insertError.message);
+        } else {
+          console.log('New user inserted with IP and username:', newUser);
+        }
       }
+    } catch (err) {
+      console.error('An error occurred while fetching IP:', err);
     }
-  } catch (err) {
-    console.error('An error occurred while fetching IP:', err);
-  }
-};
+  };
 
   useEffect(() => {
     if (username) {
