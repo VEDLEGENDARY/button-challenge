@@ -11,9 +11,11 @@ const supabase = createClient(
 const Page = () => {
   const [clickCount, setClickCount] = useState<number>(0);
   const [username, setUsername] = useState<string | null>(null);
+  const [userIP, setUserIP] = useState<string | null>(null);
   const [adds, setAdds] = useState<number>(0);
   const [removes, setRemoves] = useState<number>(0);
 
+  // Function to fetch click count
   useEffect(() => {
     const fetchClickCount = async () => {
       const { data } = await supabase.from('clicks').select('count').single();
@@ -28,17 +30,7 @@ const Page = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const handleIncrement = async () => {
-    setAdds(adds + 1); // Increment the "adds" count
-    await supabase.rpc('increment_click_count');
-  };
-
-  const handleDecrement = async () => {
-    setRemoves(removes + 1); // Increment the "removes" count
-    await supabase.rpc('decrement_click_count');
-  };
-
-  // Function to save or update user's IP address and username in the Supabase table
+  // Save or update user's IP and username in the Supabase table
   const saveUserIPAndUsername = async () => {
     if (!username) return;
 
@@ -46,20 +38,20 @@ const Page = () => {
       const res = await fetch('https://api.ipify.org?format=json');
       const data = await res.json();
       const ip = data.ip;
+      setUserIP(ip);
 
-      // Check if the IP already exists in the 'userbase' table
       const { data: existingUser, error: fetchError } = await supabase
         .from('userbase')
         .select('*')
         .eq('ip', ip)
-        .single(); // Ensures only one row is returned
+        .single();
 
       if (fetchError && fetchError.code !== 'PGRST116') {
         console.error('Error fetching IP:', fetchError.message);
       }
 
       if (existingUser) {
-        // If the IP exists, update the username
+        // Update existing user data
         const { data: updatedUser, error: updateError } = await supabase
           .from('userbase')
           .update({ username, adds, removes })
@@ -68,10 +60,10 @@ const Page = () => {
         if (updateError) {
           console.error('Error updating user:', updateError.message);
         } else {
-          console.log('IP updated with new username:', updatedUser);
+          console.log('User updated:', updatedUser);
         }
       } else {
-        // If the IP doesn't exist, insert a new row
+        // Insert new user data
         const { data: newUser, error: insertError } = await supabase
           .from('userbase')
           .insert([{ ip, username, adds, removes }]);
@@ -79,7 +71,7 @@ const Page = () => {
         if (insertError) {
           console.error('Error inserting user:', insertError.message);
         } else {
-          console.log('New user inserted with IP and username:', newUser);
+          console.log('New user inserted:', newUser);
         }
       }
     } catch (err) {
@@ -87,9 +79,79 @@ const Page = () => {
     }
   };
 
+  // Generate a random username (e.g., user4925482749264836)
+  const generateRandomUsername = () => {
+    return `user${Math.floor(Math.random() * 1e16)}`;
+  };
+
+  // Check for existing user and username, or generate new username
+  useEffect(() => {
+    const checkUserIP = async () => {
+      try {
+        const res = await fetch('https://api.ipify.org?format=json');
+        const data = await res.json();
+        const ip = data.ip;
+
+        setUserIP(ip);
+
+        // Check if the IP exists in the database
+        const { data: existingUser, error: fetchError } = await supabase
+          .from('userbase')
+          .select('username, adds, removes')
+          .eq('ip', ip)
+          .single();
+
+        if (fetchError && fetchError.code !== 'PGRST116') {
+          console.error('Error fetching IP:', fetchError.message);
+        }
+
+        if (existingUser) {
+          // If IP exists, use the existing username and counts
+          setUsername(existingUser.username);
+          setAdds(existingUser.adds);
+          setRemoves(existingUser.removes);
+        } else {
+          // If IP doesn't exist, generate a random username
+          setUsername(generateRandomUsername());
+        }
+      } catch (err) {
+        console.error('Error fetching IP:', err);
+      }
+    };
+
+    checkUserIP();
+  }, []);
+
+  // Update counts in the database and local state
+  const handleIncrement = async () => {
+    const newAdds = adds + 1;
+    setAdds(newAdds); // Update state
+
+    const ip = userIP;
+    if (ip) {
+      await supabase
+        .from('userbase')
+        .update({ adds: newAdds })
+        .eq('ip', ip); // Update adds count in the database
+    }
+  };
+
+  const handleDecrement = async () => {
+    const newRemoves = removes + 1;
+    setRemoves(newRemoves); // Update state
+
+    const ip = userIP;
+    if (ip) {
+      await supabase
+        .from('userbase')
+        .update({ removes: newRemoves })
+        .eq('ip', ip); // Update removes count in the database
+    }
+  };
+
   useEffect(() => {
     if (username) {
-      saveUserIPAndUsername();
+      saveUserIPAndUsername(); // Save the user's data if username is available
     }
   }, [username, adds, removes]);
 
