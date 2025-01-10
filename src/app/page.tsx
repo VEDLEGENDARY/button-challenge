@@ -1,18 +1,19 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
   'https://fdcegkbfklelrthizulq.supabase.co',
-  'YOUR_SUPABASE_ANON_KEY'
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZkY2Vna2Jma2xlbHJ0aGl6dWxxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzYxMTY2MjcsImV4cCI6MjA1MTY5MjYyN30.G-WipPqT8qZla6T6tMW7t49ofqx1Wn3dxhMMY_Z3wGA'
 );
 
 const Page = () => {
-  const [username, setUsername] = useState<string>('');
   const [clickCount, setClickCount] = useState<number>(0);
+  const [username, setUsername] = useState<string>('');
   const [adds, setAdds] = useState<number>(0);
   const [removes, setRemoves] = useState<number>(0);
 
-  const saveUserIPAndUsername = useCallback(async () => {
+  // Function to save the user IP and username
+  const saveUserIPAndUsername = async () => {
     if (!username) return;
 
     try {
@@ -58,11 +59,25 @@ const Page = () => {
     } catch (err) {
       console.error('An error occurred while fetching IP:', err);
     }
-  }, [username, adds, removes]); // Added dependencies
+  };
 
   useEffect(() => {
+    // Call the function when the component mounts
     saveUserIPAndUsername();
-  }, [saveUserIPAndUsername]); // Use the memoized function in useEffect
+
+    const interval = setInterval(() => {
+      // Call function to fetch and update click count from database
+      const fetchClickCount = async () => {
+        const { data } = await supabase.from('clicks').select('count').single();
+        if (data) {
+          setClickCount(data.count);
+        }
+      };
+      fetchClickCount();
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [username]); // Add `username` as a dependency
 
   const handleIncrement = async () => {
     await supabase.rpc('increment_click_count');
@@ -71,20 +86,6 @@ const Page = () => {
   const handleDecrement = async () => {
     await supabase.rpc('decrement_click_count');
   };
-
-  useEffect(() => {
-    const fetchClickCount = async () => {
-      const { data } = await supabase.from('clicks').select('count').single();
-      if (data) {
-        setClickCount(data.count);
-      }
-    };
-
-    fetchClickCount();
-
-    const interval = setInterval(fetchClickCount, 1000); // Auto-update count every second
-    return () => clearInterval(interval);
-  }, []);
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-start bg-slate-800 py-28">
@@ -124,12 +125,11 @@ const Page = () => {
             type="text"
             className="m-5 w-full rounded-lg bg-slate-700 p-2 pl-3 pr-2 font-sans text-white"
             placeholder="Username (Max 10 characters)"
-            value={username}
             onChange={(e) => setUsername(e.target.value)}
+            maxLength={10}
           />
           <button
             className="w-full rounded-lg bg-blue-700 px-5 py-2.5 text-base font-normal text-white hover:bg-blue-800 sm:w-auto"
-            disabled={!username}
             onClick={saveUserIPAndUsername}
           >
             Submit
