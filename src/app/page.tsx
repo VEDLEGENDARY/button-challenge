@@ -30,6 +30,35 @@ const Page = () => {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    // Fetch the user's IP and their adds/removes values
+    const fetchUserData = async () => {
+      try {
+        const res = await fetch('https://api.ipify.org?format=json');
+        const data = await res.json();
+        const ip = data.ip;
+        setUserIP(ip);
+
+        const { data: existingUser, error: fetchError } = await supabase
+          .from('userbase')
+          .select('adds, removes')
+          .eq('ip', ip)
+          .limit(1);  // Fix to ensure single result
+
+        if (fetchError && fetchError.code !== 'PGRST116') {
+          console.error('Error fetching IP:', fetchError.message);
+        } else if (existingUser && existingUser.length > 0) {
+          setAdds(existingUser[0].adds);
+          setRemoves(existingUser[0].removes);
+        }
+      } catch (err) {
+        console.error('An error occurred while fetching IP:', err);
+      }
+    };
+
+    fetchUserData();
+  }, []);
+
   const fetchLeaderboard = async () => {
     const { data, error } = await supabase
       .from('userbase')
@@ -66,14 +95,14 @@ const Page = () => {
         .from('userbase')
         .select('adds')
         .eq('ip', userIP)
-        .single();
+        .limit(1);  // Fix to ensure single result
 
       if (userError) {
         console.error('Error fetching user:', userError.message);
-      } else {
+      } else if (user && user.length > 0) {
         const { error: updateError } = await supabase
           .from('userbase')
-          .update({ adds: user.adds + 1 })
+          .update({ adds: user[0].adds + 1 })
           .eq('ip', userIP);
 
         if (updateError) {
@@ -92,14 +121,14 @@ const Page = () => {
         .from('userbase')
         .select('removes')
         .eq('ip', userIP)
-        .single();
+        .limit(1);  // Fix to ensure single result
 
       if (userError) {
         console.error('Error fetching user:', userError.message);
-      } else {
+      } else if (user && user.length > 0) {
         const { error: updateError } = await supabase
           .from('userbase')
-          .update({ removes: user.removes + 1 })
+          .update({ removes: user[0].removes + 1 })
           .eq('ip', userIP);
 
         if (updateError) {
@@ -121,13 +150,14 @@ const Page = () => {
           .from('userbase')
           .select('*')
           .eq('ip', ip)
-          .single();
+          .single(); // Fetch the single user based on IP
 
         if (fetchError && fetchError.code !== 'PGRST116') {
           console.error('Error fetching IP:', fetchError.message);
         }
 
         if (existingUser) {
+          // Update existing user
           const { data: updatedUser, error: updateError } = await supabase
             .from('userbase')
             .update({ username, adds, removes })
@@ -139,6 +169,7 @@ const Page = () => {
             console.log('IP updated with new username:', updatedUser);
           }
         } else {
+          // Insert new user if not found
           const { data: newUser, error: insertError } = await supabase
             .from('userbase')
             .insert([{ ip, username, adds, removes }]);
@@ -216,15 +247,12 @@ const Page = () => {
           </thead>
           <tbody>
             {leaderboard.map((entry, index) => (
-              <tr
-                key={index}
-                className="bg-white border-b dark:bg-gray-800 dark:border-gray-700"
-              >
-                <td className="px-6 py-4">{index + 1}</td>
-                <td className="px-6 py-4">{entry.username}</td>
-                <td className="px-6 py-4">{entry.adds}</td>
-                <td className="px-6 py-4">{entry.removes}</td>
-                <td className="px-6 py-4">{entry.totalClicks}</td>
+              <tr className="bg-white border-b dark:bg-gray-800 dark:border-gray-700" key={index}>
+                <td className="px-6 py-3">{index + 1}</td>
+                <td className="px-6 py-3">{entry.username}</td>
+                <td className="px-6 py-3">{entry.adds}</td>
+                <td className="px-6 py-3">{entry.removes}</td>
+                <td className="px-6 py-3">{entry.totalClicks}</td>
               </tr>
             ))}
           </tbody>
