@@ -1,19 +1,76 @@
-'use client';
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
   'https://fdcegkbfklelrthizulq.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZkY2Vna2Jma2xlbHJ0aGl6dWxxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzYxMTY2MjcsImV4cCI6MjA1MTY5MjYyN30.G-WipPqT8qZla6T6tMW7t49ofqx1Wn3dxhMMY_Z3wGA'
+  'YOUR_SUPABASE_ANON_KEY'
 );
 
 const Page = () => {
+  const [username, setUsername] = useState<string>('');
   const [clickCount, setClickCount] = useState<number>(0);
-  const [username, setUsername] = useState<string | null>(null);
-  const [userIP, setUserIP] = useState<string | null>(null);
   const [adds, setAdds] = useState<number>(0);
   const [removes, setRemoves] = useState<number>(0);
+
+  const saveUserIPAndUsername = useCallback(async () => {
+    if (!username) return;
+
+    try {
+      const res = await fetch('https://api.ipify.org?format=json');
+      const data = await res.json();
+      const ip = data.ip;
+
+      // Check if the IP already exists in the 'userbase' table
+      const { data: existingUser, error: fetchError } = await supabase
+        .from('userbase')
+        .select('*')
+        .eq('ip', ip)
+        .single(); // Ensures only one row is returned
+
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        console.error('Error fetching IP:', fetchError.message);
+      }
+
+      if (existingUser) {
+        // If the IP exists, update the username
+        const { data: updatedUser, error: updateError } = await supabase
+          .from('userbase')
+          .update({ username, adds, removes })
+          .eq('ip', ip);
+
+        if (updateError) {
+          console.error('Error updating user:', updateError.message);
+        } else {
+          console.log('IP updated with new username:', updatedUser);
+        }
+      } else {
+        // If the IP doesn't exist, insert a new row
+        const { data: newUser, error: insertError } = await supabase
+          .from('userbase')
+          .insert([{ ip, username, adds, removes }]);
+
+        if (insertError) {
+          console.error('Error inserting user:', insertError.message);
+        } else {
+          console.log('New user inserted with IP and username:', newUser);
+        }
+      }
+    } catch (err) {
+      console.error('An error occurred while fetching IP:', err);
+    }
+  }, [username, adds, removes]); // Added dependencies
+
+  useEffect(() => {
+    saveUserIPAndUsername();
+  }, [saveUserIPAndUsername]); // Use the memoized function in useEffect
+
+  const handleIncrement = async () => {
+    await supabase.rpc('increment_click_count');
+  };
+
+  const handleDecrement = async () => {
+    await supabase.rpc('decrement_click_count');
+  };
 
   useEffect(() => {
     const fetchClickCount = async () => {
@@ -28,72 +85,6 @@ const Page = () => {
     const interval = setInterval(fetchClickCount, 1000); // Auto-update count every second
     return () => clearInterval(interval);
   }, []);
-
-  const handleIncrement = async () => {
-    setAdds(adds + 1); // Increment the "adds" count
-    await supabase.rpc('increment_click_count');
-  };
-
-  const handleDecrement = async () => {
-    setRemoves(removes + 1); // Increment the "removes" count
-    await supabase.rpc('decrement_click_count');
-  };
-
-  // Function to save or update user's IP address and username in the Supabase table
-  const saveUserIPAndUsername = async () => {
-    if (!username) return;
-  
-    try {
-      const res = await fetch('https://api.ipify.org?format=json');
-      const data = await res.json();
-      const ip = data.ip;
-      setUserIP(ip);
-  
-      // Check if the IP already exists in the 'userbase' table
-      const { data: existingUser, error: fetchError } = await supabase
-        .from('userbase')
-        .select('*')
-        .eq('ip', ip)
-        .single(); // Ensures only one row is returned
-  
-      if (fetchError && fetchError.code !== 'PGRST116') {
-        console.error('Error fetching IP:', fetchError.message);
-      }
-  
-      if (existingUser) {
-        // If the IP exists, update the username
-        const { data: updatedUser, error: updateError } = await supabase
-          .from('userbase')
-          .update({ username, adds, removes })
-          .eq('ip', ip);
-  
-        if (updateError) {
-          console.error('Error updating user:', updateError.message);
-        } else {
-          console.log('IP updated with new username:', updatedUser);
-        }
-      } else {
-        // If the IP doesn't exist, insert a new row
-        const { data: newUser, error: insertError } = await supabase
-          .from('userbase')
-          .insert([{ ip, username, adds, removes }]);
-  
-        if (insertError) {
-          console.error('Error inserting user:', insertError.message);
-        } else {
-          console.log('New user inserted with IP and username:', newUser);
-        }
-      }
-    } catch (err) {
-      console.error('An error occurred while fetching IP:', err);
-    }
-  };
-  
-  useEffect(() => {
-    if (username) {
-      saveUserIPAndUsername();
-    }
-  }, [username, adds, removes]);
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-start bg-slate-800 py-28">
@@ -123,22 +114,23 @@ const Page = () => {
       </div>
 
       <div className="flex flex-col items-center pt-16 ml-6 mr-6 text-center">
-        <p className="text-3xl text-white">Username</p>
+        <p className="text-3xl text-white">IP Based Username</p>
         <p className="text-sm text-white">
-          Please enter a username (no IP addresses will be shown).<br />
+          We never sell your data or share any IP address with anyone.<br />
+          The purpose of storing your IP addresses is solely for your &quot;Username&quot;.
         </p>
         <div className="flex flex-col items-center p-3">
           <input
             type="text"
             className="m-5 w-full rounded-lg bg-slate-700 p-2 pl-3 pr-2 font-sans text-white"
             placeholder="Username (Max 10 characters)"
-            value={username || ''}
+            value={username}
             onChange={(e) => setUsername(e.target.value)}
           />
           <button
             className="w-full rounded-lg bg-blue-700 px-5 py-2.5 text-base font-normal text-white hover:bg-blue-800 sm:w-auto"
-            onClick={() => saveUserIPAndUsername()}
             disabled={!username}
+            onClick={saveUserIPAndUsername}
           >
             Submit
           </button>
