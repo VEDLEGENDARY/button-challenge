@@ -9,26 +9,12 @@ const supabase = createClient(
 );
 
 const Page = () => {
-  const [clickCount, setClickCount] = useState<number>(0);
   const [username, setUsername] = useState<string | null>(null);
   const [userIP, setUserIP] = useState<string | null>(null);
   const [adds, setAdds] = useState<number>(0);
   const [removes, setRemoves] = useState<number>(0);
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
-
-  useEffect(() => {
-    const fetchClickCount = async () => {
-      const { data } = await supabase.from('clicks').select('count').single();
-      if (data) {
-        setClickCount(data.count);
-      }
-    };
-
-    fetchClickCount();
-
-    const interval = setInterval(fetchClickCount, 100);
-    return () => clearInterval(interval);
-  }, []);
+  const [worldCount, setWorldCount] = useState<number>(0);
 
   useEffect(() => {
     // Fetch the user's IP and their adds/removes values
@@ -86,6 +72,26 @@ const Page = () => {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    const fetchWorldCount = async () => {
+      const { data, error } = await supabase
+        .from('userbase')
+        .select('adds, removes');
+
+      if (error) {
+        console.error('Error fetching world count data:', error.message);
+      } else {
+        const totalAdds = data.reduce((sum: number, entry: any) => sum + entry.adds, 0);
+        const totalRemoves = data.reduce((sum: number, entry: any) => sum + entry.removes, 0);
+        setWorldCount(totalAdds - totalRemoves);
+      }
+    };
+
+    fetchWorldCount();
+    const interval = setInterval(fetchWorldCount, 100);
+    return () => clearInterval(interval);
+  }, []);
+
   const handleIncrement = async () => {
     setAdds(adds + 1);
     await supabase.rpc('increment_click_count');
@@ -113,31 +119,36 @@ const Page = () => {
   };
 
   const handleDecrement = async () => {
-    setRemoves(removes + 1);
-    await supabase.rpc('decrement_click_count');
-    
-    if (userIP) {
-      const { data: user, error: userError } = await supabase
-        .from('userbase')
-        .select('removes')
-        .eq('ip', userIP)
-        .limit(1);  // Fix to ensure single result
-
-      if (userError) {
-        console.error('Error fetching user:', userError.message);
-      } else if (user && user.length > 0) {
-        const { error: updateError } = await supabase
+    // Check if removes count is greater than 0 before decrementing
+    if (removes < adds) {
+      setRemoves(removes + 1);
+      await supabase.rpc('decrement_click_count');
+  
+      if (userIP) {
+        const { data: user, error: userError } = await supabase
           .from('userbase')
-          .update({ removes: user[0].removes + 1 })
-          .eq('ip', userIP);
-
-        if (updateError) {
-          console.error('Error updating removes count:', updateError.message);
+          .select('removes')
+          .eq('ip', userIP)
+          .limit(1);
+  
+        if (userError) {
+          console.error('Error fetching user:', userError.message);
+        } else if (user && user.length > 0) {
+          const { error: updateError } = await supabase
+            .from('userbase')
+            .update({ removes: user[0].removes + 1 })
+            .eq('ip', userIP);
+  
+          if (updateError) {
+            console.error('Error updating removes count:', updateError.message);
+          }
         }
       }
+    } else {
+      console.log('Cannot decrement removes count below 0');
     }
   };
-
+  
   const saveUserIPAndUsername = async () => {
     if (username) {
       try {
@@ -150,14 +161,13 @@ const Page = () => {
           .from('userbase')
           .select('*')
           .eq('ip', ip)
-          .single(); // Fetch the single user based on IP
+          .single();
 
         if (fetchError && fetchError.code !== 'PGRST116') {
           console.error('Error fetching IP:', fetchError.message);
         }
 
         if (existingUser) {
-          // Update existing user
           const { data: updatedUser, error: updateError } = await supabase
             .from('userbase')
             .update({ username, adds, removes })
@@ -169,7 +179,6 @@ const Page = () => {
             console.log('IP updated with new username:', updatedUser);
           }
         } else {
-          // Insert new user if not found
           const { data: newUser, error: insertError } = await supabase
             .from('userbase')
             .insert([{ ip, username, adds, removes }]);
@@ -194,7 +203,7 @@ const Page = () => {
 
       <div className="sm:flex-col md:flex-row">
         <p className="pb-5 pt-5 text-center text-7xl text-white">
-          {clickCount.toLocaleString()}
+          {worldCount.toLocaleString()}
         </p>
         <p className="pb-5 text-center text-4xl text-white">OUT OF</p>
         <p className="pb-10 text-center text-5xl text-white">1,000,000</p>
@@ -247,12 +256,12 @@ const Page = () => {
           </thead>
           <tbody>
             {leaderboard.map((entry, index) => (
-              <tr className="bg-white border-b dark:bg-gray-800 dark:border-gray-700" key={index}>
-                <td className="px-6 py-3">{index + 1}</td>
-                <td className="px-6 py-3">{entry.username}</td>
-                <td className="px-6 py-3">{entry.adds}</td>
-                <td className="px-6 py-3">{entry.removes}</td>
-                <td className="px-6 py-3">{entry.totalClicks}</td>
+              <tr className="bg-white border-b dark:bg-gray-800 dark:border-gray-700" key={entry.username}>
+                <td className="px-6 py-4">{index + 1}</td>
+                <td className="px-6 py-4">{entry.username}</td>
+                <td className="px-6 py-4">{entry.adds}</td>
+                <td className="px-6 py-4">{entry.removes}</td>
+                <td className="px-6 py-4">{entry.totalClicks}</td>
               </tr>
             ))}
           </tbody>
